@@ -1,2 +1,5 @@
-# json-bc
-Json like transform format - binary and compression included
+# @webcarrot/json-bc
+
+Json like transport format - binary and compression included
+
+## TODO: streaming
