@@ -1,8 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { brotliCompress } from "node:zlib";
+import { gzip, brotliCompress, constants as zlibConstants } from "node:zlib";
 import { promisify } from "node:util";
+import { compress as lz4 } from "lz4-napi";
+import { compress as snappy } from "snappy";
 
-const compress = promisify(brotliCompress);
+import { Compression } from "./const";
+
+const gz = promisify(gzip);
+const br = promisify(brotliCompress);
+
 let UUID = randomUUID();
 const UUID_ERROR = new RangeError("UUID");
 
@@ -38,7 +44,13 @@ function reduce(data: any, attachments: Array<Buffer>, uuid: string): any {
   }
 }
 
-export async function encode(data: any): Promise<Buffer> {
+export async function encode(
+  data: any,
+  {
+    compression = Compression.NONE,
+    compressionLevel = 1,
+  }: { compression?: Compression; compressionLevel?: number } = {}
+): Promise<Buffer> {
   let uuid = UUID;
   let attachments: Array<Buffer>;
   let json: string;
@@ -55,15 +67,35 @@ export async function encode(data: any): Promise<Buffer> {
   const attachmentsInfo = attachments.length
     ? JSON.stringify(attachments.map((b) => b.byteLength))
     : "";
-  const headerAndJson = await compress(
+  let textBuffer = Buffer.from(
     attachmentsInfo ? uuid + attachmentsInfo + json : json
   );
-  const top = Buffer.alloc(8);
-  top.writeUInt32LE(headerAndJson.byteLength);
+  switch (compression) {
+    case Compression.NONE:
+      break;
+    case Compression.GZ:
+      textBuffer = await gz(textBuffer, { level: compressionLevel });
+      break;
+    case Compression.BR:
+      textBuffer = await br(textBuffer, {
+        params: {
+          [zlibConstants.BROTLI_PARAM_MODE]: zlibConstants.BROTLI_MODE_TEXT,
+          [zlibConstants.BROTLI_PARAM_QUALITY]: compressionLevel,
+        },
+      });
+      break;
+    case Compression.LZ4:
+      textBuffer = await lz4(textBuffer);
+      break;
+    case Compression.SNAPPY:
+      textBuffer = (await snappy(textBuffer)) as Buffer;
+      break;
+    default:
+      throw new Error("Invalid compression");
+  }
+  const top = Buffer.alloc(9);
+  top.writeUInt32LE(textBuffer.byteLength, 0);
   top.writeUInt32LE(attachmentsInfo.length, 4);
-  return Buffer.concat([
-    Buffer.from(top.buffer),
-    headerAndJson,
-    ...attachments,
-  ]);
+  top.writeInt8(compression, 8);
+  return Buffer.concat([Buffer.from(top.buffer), textBuffer, ...attachments]);
 }
