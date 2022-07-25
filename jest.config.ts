@@ -7,6 +7,7 @@ const configuration: InitialOptionsTsJest = {
   detectOpenHandles: true,
   collectCoverageFrom: ["src/**/*.ts"],
   testTimeout: 5 * 1000,
+  roots: ["./src"],
 };
 
 export default configuration;

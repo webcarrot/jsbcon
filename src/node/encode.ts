@@ -9,13 +9,11 @@ import {
   ToUint8Array,
   DefaultBufferTypes as AgnosticBufferTypes,
   Compress,
-} from "../agnostic/mod.ts";
+} from "../agnostic/mod";
 import { Compression } from "../agnostic/const";
 
 const cGZ = promisify(gzip);
 const cBR = promisify(brotliCompress);
-let cLZ4: (data: Buffer) => Promise<Buffer>;
-let cSNAPPY: (data: Buffer) => Promise<Buffer>;
 
 const compressGZ: Compress = async function (data) {
   return [
@@ -44,26 +42,6 @@ const compressBR: Compress = async function (data) {
   ];
 };
 
-const compressLZ4: Compress = async function (data) {
-  if (!cLZ4) cLZ4 = (await import("lz4-napi")).compress;
-  return [
-    Compression.LZ4,
-    defaultToUint8Array(
-      await cLZ4(Buffer.from(data, data.byteOffset, data.byteLength))
-    ),
-  ];
-};
-
-const compressSNAPPY: Compress = async function (data) {
-  if (!cSNAPPY) cSNAPPY = (await import("snappy")).compress;
-  return [
-    Compression.SNAPPY,
-    defaultToUint8Array(
-      await cSNAPPY(Buffer.from(data, data.byteOffset, data.byteLength))
-    ),
-  ];
-};
-
 function getCompress(
   compression: Compression | undefined
 ): Compress | undefined {
@@ -75,10 +53,6 @@ function getCompress(
       return compressGZ;
     case Compression.BR:
       return compressBR;
-    case Compression.LZ4:
-      return compressLZ4;
-    case Compression.SNAPPY:
-      return compressSNAPPY;
     default:
       throw new Error(`Unsupported compression ${compression}`);
   }

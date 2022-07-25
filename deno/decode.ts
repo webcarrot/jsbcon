@@ -5,7 +5,7 @@ import {
   DefaultBufferTypes,
   Decompress,
   Compression,
-} from "../agnostic/mod.ts";
+} from "./agnostic/mod.ts";
 
 export const defaultDecompress: Decompress = function (compression, data) {
   switch (compression) {

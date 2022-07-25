@@ -22,7 +22,8 @@
     "build:node:cjs": "rollup --format=cjs --file=dist/node.cjs -p typescript -m -- src/node/mod.ts",
     "build:node:mjs": "rollup --format=es --file=dist/node.mjs -p typescript -m -- src/node/mod.ts",
     "build:node": "npm run build:node:ts && npm run build:node:cjs && npm run build:node:mjs",
-    "build": "npm run clean && npm run build:agnostic && npm run build:node",
+    "build:deno": "node ./scripts/deno.mjs",
+    "build": "npm run clean && npm run build:agnostic && npm run build:node && build:deno",
     "test": "tsc --noEmit && jest",
     "coverage": "jest --coverage"
   },

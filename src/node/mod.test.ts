@@ -1,4 +1,64 @@
-import { decode, encode, Compression, Mode, defaultToUint8Array } from "./mod";
+import { uncompress as dLZ4, compress as cLZ4 } from "lz4-napi";
+import { uncompress as dSNAPPY, compress as cSNAPPY } from "snappy";
+import {
+  decode,
+  encode,
+  Compression,
+  Mode,
+  defaultToUint8Array,
+  defaultDecompress,
+  Decompress,
+  bufferToUint8Array,
+  Compress,
+} from "./mod";
+
+const decompress: Decompress = async function (compression, data) {
+  switch (compression) {
+    case Compression.LZ4: {
+      return bufferToUint8Array(
+        await dLZ4(Buffer.from(data, data.byteOffset, data.byteLength))
+      );
+    }
+    case Compression.SNAPPY: {
+      const output = await dSNAPPY(
+        Buffer.from(data, data.byteOffset, data.byteLength)
+      );
+      return bufferToUint8Array(
+        typeof output === "string" ? Buffer.from(output) : output
+      );
+    }
+  }
+  return defaultDecompress(compression, data);
+};
+
+const lLZ4Compress: Compress = async function (data) {
+  return [
+    Compression.LZ4,
+    defaultToUint8Array(
+      await cLZ4(Buffer.from(data, data.byteOffset, data.byteLength))
+    ),
+  ];
+};
+
+const compressSNAPPY: Compress = async function (data) {
+  return [
+    Compression.SNAPPY,
+    defaultToUint8Array(
+      await cSNAPPY(Buffer.from(data, data.byteOffset, data.byteLength))
+    ),
+  ];
+};
+
+const getCompression = (compression?: Compression) => {
+  switch (compression) {
+    case Compression.SNAPPY:
+      return compressSNAPPY;
+    case Compression.LZ4:
+      return lLZ4Compress;
+    default:
+      return compression;
+  }
+};
 
 describe("json-bc/node", () => {
   const TESTS = new Array(5)
@@ -26,8 +86,8 @@ describe("json-bc/node", () => {
         "size: %s compression: %s",
         async (size, compression) => {
           const orig = makeData(size);
-          const encoded = await encode(orig, compression);
-          const [mode, decoded] = await decode(encoded);
+          const encoded = await encode(orig, getCompression(compression));
+          const [mode, decoded] = await decode(encoded, decompress);
           expect(mode).toEqual(Mode.JSON);
           expect(orig).toEqual(decoded);
         }
@@ -41,8 +101,8 @@ describe("json-bc/node", () => {
         "size: %s compression: %s",
         async (size, compression) => {
           const orig = makeData(size);
-          const encoded = await encode(orig, compression);
-          const [mode, decoded] = await decode(encoded);
+          const encoded = await encode(orig, getCompression(compression));
+          const [mode, decoded] = await decode(encoded, decompress);
           expect(mode).toEqual(Mode.JSON);
           expect(orig).toEqual(decoded);
         }
@@ -54,7 +114,7 @@ describe("json-bc/node", () => {
       }
       test.each(TESTS)("size: %s compression: %s", async (_, compression) => {
         const orig = makeData();
-        const encoded = await encode(orig, compression);
+        const encoded = await encode(orig, getCompression(compression));
         const [mode, decoded] = await decode(encoded);
         expect(mode).toEqual(Mode.NULL);
         expect(orig).toEqual(decoded);
@@ -68,8 +128,8 @@ describe("json-bc/node", () => {
         "size: %s compression: %s",
         async (size, compression) => {
           const orig = makeData(size);
-          const encoded = await encode(orig, compression);
-          const [mode, decoded] = await decode<any>(encoded);
+          const encoded = await encode(orig, getCompression(compression));
+          const [mode, decoded] = await decode<any>(encoded, decompress);
           expect(mode).toEqual(Mode.JSON);
           expect(orig).toMatchObject(decoded);
         }
@@ -86,8 +146,8 @@ describe("json-bc/node", () => {
         "size: %s compression: %s",
         async (size, compression) => {
           const orig = makeData(size);
-          const encoded = await encode(orig, compression);
-          const [mode, decoded] = await decode<any>(encoded);
+          const encoded = await encode(orig, getCompression(compression));
+          const [mode, decoded] = await decode<any>(encoded, decompress);
           expect(mode).toEqual(Mode.BIN);
           expect(defaultToUint8Array(orig)).toMatchObject(decoded);
         }
@@ -124,8 +184,8 @@ describe("json-bc/node", () => {
         "size: %s compression: %s",
         async (size, compression) => {
           const orig = makeData(size);
-          const encoded = await encode(orig, compression);
-          const [mode, decoded] = await decode<any>(encoded);
+          const encoded = await encode(orig, getCompression(compression));
+          const [mode, decoded] = await decode<any>(encoded, decompress);
           expect(mode).toEqual(Mode.JSON_BIN);
           expect({
             ...orig,

@@ -1,5 +1,5 @@
-import { Compression, Mode } from "./const";
-import { getUUIDStr } from "./utils";
+import { Compression, Mode } from "./const.ts";
+import { getUUIDStr } from "./utils.ts";
 
 export type Decompress = (
   method: Compression,

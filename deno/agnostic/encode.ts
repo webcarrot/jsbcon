@@ -1,5 +1,5 @@
-import { Compression, Mode } from "./const";
-import { getUUIDStr } from "./utils";
+import { Compression, Mode } from "./const.ts";
+import { getUUIDStr } from "./utils.ts";
 
 type UUID = {
   readonly str: string;
@@ -50,26 +50,25 @@ export const defaultToUint8Array: ToUint8Array<DefaultBufferTypes> = (data) => {
   throw new TypeError("Invalid data");
 };
 
-function uint8ArraysEqual(a: Uint8Array, b: Uint8Array): boolean {
+function uint8ArraysEqual(a: Uint8Array, b: Uint8Array) {
   const byteLength = a.byteLength;
   if (byteLength !== b.byteLength) return false;
   if (a === b) return true;
-  if (byteLength < 128) {
-    for (let i = 0; i < byteLength; i++) if (a[i] !== b[i]) return false;
-    return true;
-  }
   const noFit = byteLength % 4;
   let ae = a;
   let be = b;
   if (noFit) {
     ae = a.slice(0, byteLength - noFit);
     be = b.slice(0, byteLength - noFit);
-    for (let i = byteLength - noFit; i < byteLength; i++)
+    for (let i = byteLength - noFit; i < byteLength; i++) {
       if (a[i] !== b[i]) return false;
+    }
   }
   const at = new Uint32Array(ae.buffer, ae.byteOffset, ae.byteLength / 4);
   const bt = new Uint32Array(be.buffer, be.byteOffset, be.byteLength / 4);
-  for (let i = 0; i < at.length; i++) if (at[i] !== bt[i]) return false;
+  for (let i = 0; i < at.length; i++) {
+    if (at[i] !== bt[i]) return false;
+  }
   return true;
 }
 
@@ -167,6 +166,5 @@ export async function encode<B extends DefaultBufferTypes>(
   }
   //#endregion
   if (!bin.length) return jsonMode(compression, jsonBuffer);
-  bin.unshift(jsonBuffer);
-  return jsonBinMode(compression, uuid.arr, bin);
+  return jsonBinMode(compression, uuid.arr, [jsonBuffer].concat(bin));
 }

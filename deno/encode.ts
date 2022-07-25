@@ -1,12 +1,13 @@
 import { gzip } from "https://deno.land/x/compress@v0.4.4/gzip/gzip.ts";
 import {
   encode as agnosticEncode,
+  defaultDecompress as agnosticDecompress,
   IsBuffer,
   ToUint8Array,
   DefaultBufferTypes,
   Compress,
   Compression,
-} from "../agnostic/mod.ts";
+} from "./agnostic/mod.ts";
 
 const compressGZ: Compress = function (data) {
   return [
@@ -31,6 +32,10 @@ function getCompress(
   }
 }
 
+function makeUUID() {
+  return crypto.randomUUID();
+}
+
 export async function encode<B extends DefaultBufferTypes>(
   data: any,
   compression?: Compression | Compress,
@@ -40,7 +45,11 @@ export async function encode<B extends DefaultBufferTypes>(
   let compress: Compress | undefined;
   if (compression instanceof Function) compress = compression;
   else compress = getCompress(compression);
-  return await agnosticEncode<B>(data, compress, isBuffer, toUint8Array, () =>
-    crypto.randomUUID()
+  return await agnosticEncode<B>(
+    data,
+    compress,
+    isBuffer,
+    toUint8Array,
+    makeUUID
   );
 }
