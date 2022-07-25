@@ -1,4 +1,5 @@
 import { Compression, Mode } from "./const";
+import { getUUIDStr } from "./utils";
 
 type UUID = {
   readonly str: string;
@@ -25,15 +26,11 @@ export type DefaultBufferTypes =
 
 function randomUUID(makeUUID: () => string): UUID {
   const uuid = makeUUID().replaceAll("-", "");
-  const arr = new Uint8Array(16);
+  const u8 = new Uint8Array(16);
   for (let i = 0; i < 32; i += 2)
-    arr[i] = parseInt(uuid.substring(i, i + 2), 16);
-  const str = new Array<string>(8);
-  for (let i = 0; i < 16; i++) str[i] = arr[i].toString(36);
-  return { str: str.join(""), arr };
+    u8[i] = parseInt(uuid.substring(i, i + 2), 16);
+  return { str: getUUIDStr(u8), arr: u8 };
 }
-
-let UUID: UUID;
 
 export const defaultIsBuffer: IsBuffer<DefaultBufferTypes> = (data) =>
   data &&
@@ -54,41 +51,41 @@ export const defaultToUint8Array: ToUint8Array<DefaultBufferTypes> = (data) => {
 };
 
 function uint8ArraysEqual(a: Uint8Array, b: Uint8Array) {
-  if (a.byteLength !== b.byteLength) return false;
-  return a.every((val, i) => val === b[i]);
+  const byteLength = a.byteLength;
+  if (byteLength !== b.byteLength) return false;
+  if (a === b) return true;
+  const noFit = byteLength % 4;
+  let ae = a;
+  let be = b;
+  if (noFit) {
+    ae = a.slice(0, byteLength - noFit);
+    be = b.slice(0, byteLength - noFit);
+    for (let i = byteLength - noFit; i < byteLength; i++) {
+      if (a[i] !== b[i]) return false;
+    }
+  }
+  const at = new Uint32Array(ae.buffer, ae.byteOffset, ae.byteLength / 4);
+  const bt = new Uint32Array(be.buffer, be.byteOffset, be.byteLength / 4);
+  for (let i = 0; i < at.length; i++) {
+    if (at[i] !== bt[i]) return false;
+  }
+  return true;
 }
 
-class BinLink {
-  #index: number;
-  #getUUID: () => string;
-  constructor(index: number, getUUID: () => string) {
-    this.#index = index;
-    this.#getUUID = getUUID;
-  }
-  toJSON() {
-    return this.#getUUID() + this.#index.toString(36);
-  }
-}
-
-function reduce(
-  data: any,
-  invalidate: (data: any) => void,
-  append: (data: any) => BinLink | false
-): any {
-  invalidate(data);
+function reduce(data: any, append: (data: any) => string | false): any {
   if (!data || typeof data !== "object") return data;
   const attachment = append(data);
   if (attachment) return attachment;
   if (data instanceof Array)
-    return data.map<any>((data) => reduce(data, invalidate, append));
+    return data.map<any>((data) => reduce(data, append));
   if (data.toJSON instanceof Function) {
     const json = data.toJSON();
-    if (json !== data) return reduce(json, invalidate, append);
+    if (json !== data) return reduce(json, append);
   }
   const keys = Object.keys(data);
   if (keys.length)
     return keys.reduce<any>(function (out, key) {
-      out[key] = reduce(data[key], invalidate, append);
+      out[key] = reduce(data[key], append);
       return out;
     }, {});
   return data;
@@ -99,18 +96,20 @@ function nullMode() {
 }
 
 function binMode(data: Uint8Array) {
-  const out = new Uint8Array(1 + data.byteLength);
-  out[0] = Mode.BIN;
-  out.set(data, 1);
-  return out;
+  const output = new Uint8Array(1 + data.byteLength);
+  const dv = new DataView(output.buffer, output.byteOffset, output.byteLength);
+  dv.setUint8(0, Mode.BIN);
+  output.set(data, 1);
+  return output;
 }
 
 function jsonMode(compression: Compression, jsonBuffer: Uint8Array) {
-  const out = new Uint8Array(2 + jsonBuffer.byteLength);
-  out[0] = Mode.JSON;
-  out[1] = compression;
-  out.set(jsonBuffer, 2);
-  return out;
+  const output = new Uint8Array(2 + jsonBuffer.byteLength);
+  const dv = new DataView(output.buffer, output.byteOffset, output.byteLength);
+  dv.setUint8(0, Mode.JSON);
+  dv.setUint8(1, compression);
+  output.set(jsonBuffer, 2);
+  return output;
 }
 
 function jsonBinMode(
@@ -119,20 +118,20 @@ function jsonBinMode(
   bin: ReadonlyArray<Uint8Array>
 ) {
   const length = bin.reduce((out, b) => out + b.byteLength + 4, 2 + 16);
-  const out = new Uint8Array(length);
-  let offset = 0;
-  out[offset++] = Mode.JSON_BIN;
-  out[offset++] = compression;
-  out.set(uuid, offset);
+  const output = new Uint8Array(length);
+  const dv = new DataView(output.buffer, output.byteOffset, output.byteLength);
+  dv.setUint8(0, Mode.JSON_BIN);
+  dv.setUint8(1, compression);
+  let offset = 2;
+  output.set(uuid, offset);
   offset += uuid.byteLength;
   for (let i = 0; i < bin.length; i++) {
     const b = bin[i];
-    out.set(new Uint32Array([b.byteLength]), offset);
-    offset += 4;
-    out.set(b, offset);
-    offset += b.byteLength;
+    dv.setUint32(offset, b.byteLength, false);
+    output.set(b, offset + 4);
+    offset += b.byteLength + 4;
   }
-  return out;
+  return output;
 }
 
 export async function encode<B extends DefaultBufferTypes>(
@@ -145,35 +144,20 @@ export async function encode<B extends DefaultBufferTypes>(
   if (data === null || data === undefined) return nullMode();
   if (isBuffer(data)) return binMode(toUint8Array(data));
   //#region get binary from data
-  if (!UUID) UUID = randomUUID(makeUUID);
-  let uuid: UUID = UUID;
+  const uuid: UUID = randomUUID(makeUUID);
   const bin: Array<Uint8Array> = [];
-  const uuids = new Set<string>([uuid.str]);
-  function getUUID() {
-    return uuid.str;
-  }
-  function invalidate(value: any) {
-    if (
-      typeof value === "string" &&
-      value.startsWith(uuid.str) &&
-      uuids.has(value)
-    ) {
-      UUID = uuid = randomUUID(makeUUID);
-      uuids.add(uuid.str);
-    }
-  }
-  function append(value: any): BinLink | false {
+  function append(value: any): string | false {
     if (!isBuffer(value)) return false;
     const attachment = toUint8Array(value);
     let index = bin.findIndex(function (b) {
       return uint8ArraysEqual(attachment, b);
     });
     if (index === -1) index = bin.push(attachment) - 1;
-    return new BinLink(index, getUUID);
+    return uuid.str + ":" + index.toString(16);
   }
   let compression = Compression.OFF;
   let jsonBuffer = new TextEncoder().encode(
-    JSON.stringify(reduce(data, invalidate, append))
+    JSON.stringify(reduce(data, append))
   );
   if (compress) {
     const [comp, buff] = await compress(jsonBuffer);

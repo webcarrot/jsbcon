@@ -1,4 +1,5 @@
 import { Compression, Mode } from "./const";
+import { getUUIDStr } from "./utils";
 
 export type Decompress = (
   method: Compression,
@@ -23,28 +24,22 @@ async function jsonMode(
 
 async function jsonBinMode(
   compression: Compression,
-  data: Uint8Array,
+  input: Uint8Array,
   decompress?: Decompress
 ) {
-  const str = new Array<string>(16);
-  for (let i = 0; i < 16; i++) str[i] = data[i].toString(36);
-  const uuid = str.join("");
+  const dv = new DataView(input.buffer, input.byteOffset, input.byteLength);
+  const uuid = getUUIDStr(input.slice(0, 16));
   const chunks: Array<Uint8Array> = [];
   let offset = 16;
-  while (offset < data.byteLength) {
-    const lengthAb = data.slice(offset, offset + 4);
-    const length = new Uint32Array(
-      lengthAb.buffer,
-      lengthAb.byteOffset,
-      lengthAb.byteLength
-    )[0];
+  while (offset < input.byteLength) {
+    const length = dv.getInt32(offset, false);
     offset += 4;
-    chunks.push(data.slice(offset, offset + length));
+    chunks.push(input.slice(offset, offset + length));
     offset += length;
   }
   const bin = new Map<String, ArrayBuffer>();
   for (let i = 1; i < chunks.length; i++) {
-    bin.set(uuid + i.toString(36), chunks[i]);
+    bin.set(uuid + ":" + (i - 1).toString(16), chunks[i]);
   }
   let jsonBuffer = chunks[0];
   switch (compression) {
@@ -55,7 +50,7 @@ async function jsonBinMode(
         throw new Error(`Unsupported compression ${compression}`);
       jsonBuffer = await decompress(compression, jsonBuffer);
   }
-  return JSON.parse(new TextDecoder().decode(data), function (_, value) {
+  return JSON.parse(new TextDecoder().decode(jsonBuffer), function (_, value) {
     if (typeof value !== "string" || !bin.has(value)) return value;
     return bin.get(value);
   });
