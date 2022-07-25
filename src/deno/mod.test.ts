@@ -1,42 +1,43 @@
+import { equal } from "https://deno.land/std/testing/asserts.ts";
 import {
   decode,
   encode,
   Compression,
   Mode,
-  defaultToUint8Array,
-} from "../src/node/mod";
+  // defaultToUint8Array,
+} from "./mod.ts";
 
+const TESTS = new Array(5)
+  .fill(0)
+  .map((_, no) => Math.pow(2, (no + 2) * 2))
+  .flatMap((size) =>
+    [undefined, Compression.OFF, Compression.GZ].map(
+      (compression): [number, undefined | Compression] => [size, compression]
+    )
+  );
+
+TESTS.forEach(([size, compression]) => {
+  {
+    const makeData = (size: number) => {
+      return size;
+    };
+    Deno.test(`number ${size} ${compression}`, async () => {
+      const orig = makeData(size);
+      const encoded = await encode(orig, compression);
+      const [mode, decoded] = await decode(encoded);
+      equal(mode, Mode.JSON);
+      equal(orig, decoded);
+    });
+  }
+});
+
+/*
 describe("json-bc/node", () => {
-  const TESTS = new Array(5)
-    .fill(0)
-    .map((_, no) => Math.pow(2, (no + 2) * 2))
-    .flatMap((size) =>
-      [
-        undefined,
-        Compression.OFF,
-        Compression.GZ,
-        Compression.BR,
-        Compression.LZ4,
-        Compression.SNAPPY,
-      ].map((compression): [number, undefined | Compression] => [
-        size,
-        compression,
-      ])
-    );
   describe("pure json", () => {
     describe("number", () => {
-      function makeData(size: number): any {
-        return size;
-      }
       test.each(TESTS)(
         "size: %s compression: %s",
-        async (size, compression) => {
-          const orig = makeData(size);
-          const encoded = await encode(orig, compression);
-          const [mode, decoded] = await decode(encoded);
-          expect(mode).toEqual(Mode.JSON);
-          expect(orig).toEqual(decoded);
-        }
+        async (size, compression) => {}
       );
     });
     describe("string", () => {
@@ -194,3 +195,4 @@ describe("json-bc/node", () => {
     });
   });
 });
+*/

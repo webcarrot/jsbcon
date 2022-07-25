@@ -9,7 +9,7 @@ import {
   ToUint8Array,
   DefaultBufferTypes as AgnosticBufferTypes,
   Compress,
-} from "../agnostic/mod";
+} from "../agnostic/mod.ts";
 import { Compression } from "../agnostic/const";
 
 const cGZ = promisify(gzip);
