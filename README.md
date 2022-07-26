@@ -17,7 +17,7 @@ Simple transport format
 - [x] browsers
 - [x] deno
 
-## Working modes
+## Operating modes
 
 1. [x] `null`
 2. [x] binary
@@ -29,9 +29,12 @@ Simple transport format
 - [ ] RFC / Specification
 - [ ] Documentation
 - [ ] `Accept`/`Content-Type` header helpers - mime negotiation
-- [ ] Optional output binary transformations (from `Uint8Array` to `Buffer` / `Blob` / `Whatever`)
+- [ ] Optional decode output binary transformations (from `Uint8Array` to `Buffer` / `Blob` / `Whatever`)
 - [ ] Add more compression methods
-- [ ] Add working mode for streaming `JSON` + _(optional)_ compression + binary 
+- [ ] Add operating modes to produce and receive streams of:
+    - [ ] binary
+    - [ ] `JSON` _(optional compression)_
+    - [ ] `JSON` _(optional compression)_ + binary
 - [ ] Plugins/helpers for clients: `fetch`, `axios`, `deno` etc.
 - [ ] Plugins/helpers for servers: `express`, `koa`, `deno` etc.
 - [ ] CI
