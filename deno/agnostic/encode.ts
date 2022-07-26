@@ -1,5 +1,5 @@
-import { Compression, Data, Mode } from "./const";
-import { getUUIDStr } from "./utils";
+import { Compression, Data, Mode } from "./const.ts";
+import { getUUIDStr } from "./utils.ts";
 
 type UUID = {
   readonly str: string;

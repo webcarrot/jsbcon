@@ -5,6 +5,7 @@ export type {
   IsBuffer,
   ToUint8Array,
 } from "./encode";
-export { decode } from "./decode";
+export { decode, defaultDecompress } from "./decode";
 export type { Decompress } from "./decode";
 export { Compression, Mode } from "./const";
+export type { Data } from "./const";

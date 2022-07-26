@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "strict": true,
+    "allowUmdGlobalAccess": false,
+    "module": "ES2020",
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "inlineSources": false,
+    "declaration": true,
+    "declarationMap": false,
+    "allowJs": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": false,
+    "target": "ES2022",
+    "removeComments": false,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "preserveConstEnums": false,
+    "types": [],
+    "declarationDir": "./tmp"
+  }
+}
