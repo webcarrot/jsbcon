@@ -1,5 +1,5 @@
 import { equal } from "https://deno.land/std/testing/asserts.ts";
-import { decode, encode, Compression, Mode } from "./mod.ts";
+import { decode, encode, Compression, Mode, Data } from "./mod.ts";
 
 const TESTS = [
   {
@@ -26,6 +26,7 @@ const TESTS = [
   {
     name: "bin",
     data: (size: number) => {
+      const zero = new Uint8Array(0);
       const a = new Uint8Array((1 + Math.random() * size) | 0).fill(size % 256);
       const b = new Uint8Array([1, 2, 3, 4, 5]);
       const c = new Uint8Array([1, 2, 3, 4, 4]);
@@ -35,9 +36,12 @@ const TESTS = [
       const dd = new Uint8Array([1, 3, 3, 4]);
 
       return {
+        zero,
         string: "hi",
         null: null,
         num: 2343434.23,
+        true: true,
+        false: false,
         obj: {
           b,
           bb,
@@ -64,7 +68,7 @@ const TESTS = [
           compression
         ): [
           string,
-          (size: number) => any,
+          (size: number) => Data,
           number,
           Mode,
           undefined | Compression

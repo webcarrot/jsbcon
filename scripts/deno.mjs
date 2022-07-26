@@ -22,6 +22,10 @@ async function copy(source, destination) {
         await rm(destination, { recursive: true });
       await mkdir(destination);
       const content = await readdir(source);
+      await writeFile(
+        join(destination, "README.md"),
+        "Copy of `src/agnostic/**/*.ts` for deno by node `scripts/deno.mjs`"
+      );
       for (let path of content)
         await copy(join(source, path), join(destination, path));
       break;

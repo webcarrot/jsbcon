@@ -1,0 +1,1 @@
+Copy of `src/agnostic/**/*.ts` for deno by node `scripts/deno.mjs`

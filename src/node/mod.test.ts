@@ -157,6 +157,7 @@ describe("json-bc/node", () => {
     });
     describe("attachments in object", () => {
       function makeData(size: number) {
+        const zero = new Uint8Array(0);
         const u8 = new Uint8Array(1).fill(255);
         const u16 = new Uint16Array(3).fill(65535);
         const u32 = new Uint32Array(1).fill(4294967295);
@@ -164,6 +165,7 @@ describe("json-bc/node", () => {
         const u16h = new Uint16Array(3).fill(65534 / 2);
         const u32h = new Uint32Array(1).fill(4294967294 / 2);
         return {
+          zero,
           num: 1,
           str: "string",
           u8,

@@ -30,12 +30,15 @@
   ],
   "scripts": {
     "clean": "rm -rf ./dist",
-    "prepack": "npm run build",
+    "prepack": "npm run clean && npm run build:rollup",
     "postpack": "npm run clean",
     "build:rollup": "rollup -c ./rollup.config.mjs",
     "build:deno": "node ./scripts/deno.mjs",
-    "build": "npm run clean && npm run build:rollup && build:deno",
-    "test": "tsc -p ./src/agnostic/tsconfig.json --noEmit && tsc -p ./src/browser/tsconfig.json --noEmit && tsc -p ./src/node/tsconfig.json --noEmit && jest && npm run build:deno && deno test ./deno"
+    "build": "npm run clean && npm run build:rollup && npm run build:deno",
+    "test:build": "tsc -p ./src/agnostic/tsconfig.json --noEmit && tsc -p ./src/browser/tsconfig.json --noEmit && tsc -p ./src/node/tsconfig.json --noEmit",
+    "test:node": "jest",
+    "test:deno": "npm run build:deno && deno test ./deno",
+    "test": "npm run test:build && npm run test:node && npm run test:deno"
   },
   "repository": {
     "type": "git",
