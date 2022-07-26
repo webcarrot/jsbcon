@@ -1,4 +1,4 @@
-![@webcarrot/jsbcon - Simple transport format](https://github.com/webcarrot/jsonbc/raw/main/js-bc-on.png?raw=true)
+![@webcarrot/jsbcon - Simple transport format](https://github.com/webcarrot/jsbcon/raw/main/js-bc-on.png?raw=true&sanitize=true)
 
 # @webcarrot/jsbcon
 
@@ -21,8 +21,8 @@ Simple transport format
 
 1. [x] `null`
 2. [x] binary
-3. [x] `JSON` + _(optional)_ compression
-4. [x] `JSON` + _(optional)_ compression + binary
+3. [x] `JSON` _(optional compression)_
+4. [x] `JSON` _(optional compression)_ + binary
 
 ## TODO / WIP
 
