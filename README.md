@@ -1,3 +1,3 @@
-# @webcarrot/json-bc
+# @webcarrot/jsbcon
 
-Simple `JSON` like transport format - binary and compression
+Simple transport format

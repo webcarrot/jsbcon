@@ -1,5 +1,5 @@
 {
-  "name": "@webcarrot/json-bc",
+  "name": "@webcarrot/jsbcon",
   "version": "0.0.1",
   "description": "Json like transport format - binary and compression included",
   "main": "dist/node.cjs",
