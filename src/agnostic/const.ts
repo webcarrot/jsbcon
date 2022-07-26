@@ -12,3 +12,18 @@ export const enum Compression {
   LZ4 = 4,
   SNAPPY = 5,
 }
+
+export type Data =
+  | null
+  | undefined
+  | boolean
+  | string
+  | number
+  | object
+  | ArrayBuffer
+  | Uint8Array
+  | Uint16Array
+  | Uint32Array
+  | ReadonlyArray<Data>
+  | { readonly [key in string]: Data }
+  | { toJSON: () => Data };

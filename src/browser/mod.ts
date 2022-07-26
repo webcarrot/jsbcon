@@ -5,7 +5,7 @@ export {
   defaultToUint8Array,
   Compression,
   Mode,
-} from "./agnostic/mod.ts";
+} from "../agnostic/mod";
 export type {
   Compress,
   Decompress,
@@ -13,6 +13,6 @@ export type {
   IsBuffer,
   ToUint8Array,
   Data,
-} from "./agnostic/mod.ts";
-export { encode } from "./encode.ts";
-export { decode, defaultDecompress } from "./decode.ts";
+} from "../agnostic/mod";
+export { encode } from "./encode";
+export { decode, defaultDecompress } from "./decode";

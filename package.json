@@ -2,9 +2,27 @@
   "name": "@webcarrot/json-bc",
   "version": "0.0.1",
   "description": "Json like transport format - binary and compression included",
-  "main": "dist/mod.cjs",
-  "module": "dist/mod.mjs",
-  "types": "dist/mod.d.ts",
+  "main": "dist/node.cjs",
+  "module": "dist/node.mjs",
+  "types": "dist/node.d.ts",
+  "browser": "dist/browser.mjs",
+  "exports": {
+    "node": {
+      "require": "./dist/node.cjs",
+      "import": "./dis/node.mjs",
+      "types": "./dis/node.d.ts"
+    },
+    "browser": {
+      "require": "./dist/browser.cjs",
+      "import": "./dis/browser.mjs",
+      "types": "./dis/browser.d.ts"
+    },
+    "default": {
+      "require": "./dist/agnostic.cjs",
+      "import": "./dis/agnostic.mjs",
+      "types": "./dis/agnostic.d.ts"
+    }
+  },
   "type": "module",
   "files": [
     "dist",
@@ -14,18 +32,10 @@
     "clean": "rm -rf ./dist",
     "prepack": "npm run build",
     "postpack": "npm run clean",
-    "build:agnostic:ts": "rollup -c ./rollup.config.mjs",
-    "build:agnostic:cjs": "rollup --format=cjs --file=dist/agnostic.cjs -p typescript -m -- src/agnostic/mod.ts",
-    "build:agnostic:mjs": "rollup --format=es --file=dist/agnostic.mjs -p typescript -m -- src/agnostic/mod.ts",
-    "build:agnostic": "npm run build:agnostic:ts && npm run build:agnostic:cjs && npm run build:agnostic:mjs",
-    "build:node:ts": "rollup -c ./rollup.config.mjs",
-    "build:node:cjs": "rollup --format=cjs --file=dist/node.cjs -p typescript -m -- src/node/mod.ts",
-    "build:node:mjs": "rollup --format=es --file=dist/node.mjs -p typescript -m -- src/node/mod.ts",
-    "build:node": "npm run build:node:ts && npm run build:node:cjs && npm run build:node:mjs",
+    "build:rollup": "rollup -c ./rollup.config.mjs",
     "build:deno": "node ./scripts/deno.mjs",
-    "build": "npm run clean && npm run build:agnostic && npm run build:node && build:deno",
-    "test": "tsc --noEmit && jest",
-    "coverage": "jest --coverage"
+    "build": "npm run clean && npm run build:rollup && build:deno",
+    "test": "tsc -p ./src/agnostic/tsconfig.json --noEmit && tsc -p ./src/browser/tsconfig.json --noEmit && tsc -p ./src/node/tsconfig.json --noEmit && jest && npm run build:deno && deno test ./deno"
   },
   "repository": {
     "type": "git",
@@ -56,17 +66,5 @@
     "ts-node": "^10.9.1",
     "tslib": "^2.4.0",
     "typescript": "^4.7.4"
-  },
-  "peerDependencies": {
-    "lz4-napi": "^2.0.3",
-    "snappy": "^7.1.1"
-  },
-  "peerDependenciesMeta": {
-    "lz4-napi": {
-      "optional": true
-    },
-    "snappy": {
-      "optional": true
-    }
   }
 }

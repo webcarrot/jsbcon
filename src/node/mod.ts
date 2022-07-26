@@ -13,6 +13,7 @@ export type {
   DefaultBufferTypes as AgnosticBufferTypes,
   IsBuffer,
   ToUint8Array,
+  Data,
 } from "../agnostic/mod";
 export { encode, defaultIsBuffer, defaultToUint8Array } from "./encode";
 export type { DefaultBufferTypes } from "./encode";

@@ -8,3 +8,4 @@ export type {
 export { decode, defaultDecompress } from "./decode";
 export type { Decompress } from "./decode";
 export { Compression, Mode } from "./const";
+export type { Data } from "./const";

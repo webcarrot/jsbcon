@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["./*.ts", "../agnostic/*.ts"],
+  "compilerOptions": {
+    "types": ["node", "jest"]
+  }
+}

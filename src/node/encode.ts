@@ -9,13 +9,15 @@ import {
   ToUint8Array,
   DefaultBufferTypes as AgnosticBufferTypes,
   Compress,
+  Compression,
+  Data,
 } from "../agnostic/mod";
-import { Compression } from "../agnostic/const";
 
 const cGZ = promisify(gzip);
 const cBR = promisify(brotliCompress);
 
 const compressGZ: Compress = async function (data) {
+  if (data.byteLength < 64) return [Compression.OFF, data];
   return [
     Compression.GZ,
     defaultToUint8Array(
@@ -27,6 +29,7 @@ const compressGZ: Compress = async function (data) {
 };
 
 const compressBR: Compress = async function (data) {
+  if (data.byteLength < 64) return [Compression.OFF, data];
   return [
     Compression.BR,
     defaultToUint8Array(
@@ -45,24 +48,23 @@ const compressBR: Compress = async function (data) {
 function getCompress(
   compression: Compression | undefined
 ): Compress | undefined {
-  if (!compression) return;
   switch (compression) {
-    case Compression.OFF:
-      return;
     case Compression.GZ:
       return compressGZ;
     case Compression.BR:
       return compressBR;
     default:
-      throw new Error(`Unsupported compression ${compression}`);
+      return;
   }
 }
 
 export type DefaultBufferTypes = AgnosticBufferTypes | Buffer;
 
-export const defaultIsBuffer: IsBuffer<DefaultBufferTypes> = function (data) {
-  return data instanceof Buffer || agnosticIsBuffer(data);
-};
+export const defaultIsBuffer: IsBuffer<DefaultBufferTypes> = <D extends Data>(
+  data: D
+) =>
+  (data instanceof Buffer ||
+    agnosticIsBuffer(data)) as D extends DefaultBufferTypes ? true : false;
 
 export const defaultToUint8Array: ToUint8Array<DefaultBufferTypes> = function (
   data
@@ -73,10 +75,10 @@ export const defaultToUint8Array: ToUint8Array<DefaultBufferTypes> = function (
 };
 
 export async function encode<B extends DefaultBufferTypes>(
-  data: any,
+  data: Data,
   compression?: Compression | Compress,
-  isBuffer: IsBuffer<B> = defaultIsBuffer as IsBuffer<any> as IsBuffer<B>,
-  toUint8Array: ToUint8Array<B> = defaultToUint8Array as ToUint8Array<any> as ToUint8Array<B>
+  isBuffer: IsBuffer<B> = defaultIsBuffer as unknown as IsBuffer<B>,
+  toUint8Array: ToUint8Array<B> = defaultToUint8Array as unknown as ToUint8Array<B>
 ) {
   let compress: Compress | undefined;
   if (compression instanceof Function) compress = compression;

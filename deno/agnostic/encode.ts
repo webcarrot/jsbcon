@@ -1,4 +1,4 @@
-import { Compression, Mode } from "./const.ts";
+import { Compression, Data, Mode } from "./const.ts";
 import { getUUIDStr } from "./utils.ts";
 
 type UUID = {
@@ -6,7 +6,7 @@ type UUID = {
   readonly arr: Uint8Array;
 };
 
-export type IsBuffer<B extends DefaultBufferTypes, D extends any = any> = (
+export type IsBuffer<B extends DefaultBufferTypes> = <D extends Data>(
   data: D
 ) => D extends B ? true : false;
 
@@ -32,13 +32,13 @@ function randomUUID(makeUUID: () => string): UUID {
   return { str: getUUIDStr(u8), arr: u8 };
 }
 
-export const defaultIsBuffer: IsBuffer<DefaultBufferTypes> = (data) =>
-  data &&
-  typeof data === "object" &&
+export const defaultIsBuffer: IsBuffer<DefaultBufferTypes> = <D extends Data>(
+  data: D
+) =>
   (data instanceof Uint8Array ||
     data instanceof Uint16Array ||
     data instanceof Uint32Array ||
-    data instanceof ArrayBuffer);
+    data instanceof ArrayBuffer) as D extends DefaultBufferTypes ? true : false;
 
 export const defaultToUint8Array: ToUint8Array<DefaultBufferTypes> = (data) => {
   if (data instanceof Uint8Array) return data;
@@ -50,42 +50,46 @@ export const defaultToUint8Array: ToUint8Array<DefaultBufferTypes> = (data) => {
   throw new TypeError("Invalid data");
 };
 
-function uint8ArraysEqual(a: Uint8Array, b: Uint8Array) {
+function uint8ArraysEqual(a: Uint8Array, b: Uint8Array): boolean {
   const byteLength = a.byteLength;
   if (byteLength !== b.byteLength) return false;
   if (a === b) return true;
+  if (byteLength < 128) {
+    for (let i = 0; i < byteLength; i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
   const noFit = byteLength % 4;
   let ae = a;
   let be = b;
   if (noFit) {
     ae = a.slice(0, byteLength - noFit);
     be = b.slice(0, byteLength - noFit);
-    for (let i = byteLength - noFit; i < byteLength; i++) {
+    for (let i = byteLength - noFit; i < byteLength; i++)
       if (a[i] !== b[i]) return false;
-    }
   }
   const at = new Uint32Array(ae.buffer, ae.byteOffset, ae.byteLength / 4);
   const bt = new Uint32Array(be.buffer, be.byteOffset, be.byteLength / 4);
-  for (let i = 0; i < at.length; i++) {
-    if (at[i] !== bt[i]) return false;
-  }
+  for (let i = 0; i < at.length; i++) if (at[i] !== bt[i]) return false;
   return true;
 }
 
-function reduce(data: any, append: (data: any) => string | false): any {
+function reduce(data: Data, append: (data: Data) => string | false): Data {
   if (!data || typeof data !== "object") return data;
   const attachment = append(data);
   if (attachment) return attachment;
   if (data instanceof Array)
-    return data.map<any>((data) => reduce(data, append));
-  if (data.toJSON instanceof Function) {
+    return data.map<Data>((data) => reduce(data, append));
+  if ("toJSON" in data && data.toJSON instanceof Function) {
     const json = data.toJSON();
     if (json !== data) return reduce(json, append);
   }
   const keys = Object.keys(data);
   if (keys.length)
-    return keys.reduce<any>(function (out, key) {
-      out[key] = reduce(data[key], append);
+    return keys.reduce<{ [key in string]: Data }>(function (out, key) {
+      out[key] = reduce(
+        (data as { readonly [key in string]: Data })[key],
+        append
+      );
       return out;
     }, {});
   return data;
@@ -135,20 +139,20 @@ function jsonBinMode(
 }
 
 export async function encode<B extends DefaultBufferTypes>(
-  data: any,
+  data: Data,
   compress: Compress | undefined,
-  isBuffer: IsBuffer<B> = defaultIsBuffer as IsBuffer<any> as IsBuffer<B>,
-  toUint8Array: ToUint8Array<B> = defaultToUint8Array as ToUint8Array<any> as ToUint8Array<B>,
+  isBuffer: IsBuffer<B> = defaultIsBuffer as unknown as IsBuffer<B>,
+  toUint8Array: ToUint8Array<B> = defaultToUint8Array as ToUint8Array<B>,
   makeUUID: () => string
 ): Promise<Uint8Array> {
   if (data === null || data === undefined) return nullMode();
-  if (isBuffer(data)) return binMode(toUint8Array(data));
+  if (isBuffer(data)) return binMode(toUint8Array(data as B));
   //#region get binary from data
   const uuid: UUID = randomUUID(makeUUID);
   const bin: Array<Uint8Array> = [];
-  function append(value: any): string | false {
+  function append(value: Data): string | false {
     if (!isBuffer(value)) return false;
-    const attachment = toUint8Array(value);
+    const attachment = toUint8Array(value as B);
     let index = bin.findIndex(function (b) {
       return uint8ArraysEqual(attachment, b);
     });
@@ -166,5 +170,6 @@ export async function encode<B extends DefaultBufferTypes>(
   }
   //#endregion
   if (!bin.length) return jsonMode(compression, jsonBuffer);
-  return jsonBinMode(compression, uuid.arr, [jsonBuffer].concat(bin));
+  bin.unshift(jsonBuffer);
+  return jsonBinMode(compression, uuid.arr, bin);
 }

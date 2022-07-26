@@ -1,21 +1,23 @@
-import { gunzip } from "https://deno.land/x/compress@v0.4.4/gzip/gzip.ts";
 import {
   decode as agnosticDecode,
+  defaultDecompress as agnosticDecompress,
   defaultToUint8Array,
   DefaultBufferTypes,
   Decompress,
   Compression,
 } from "./agnostic/mod.ts";
 
+async function dGZ(data: Uint8Array) {
+  return new Uint8Array(
+    await new Response(
+      new Blob([data]).stream().pipeThrough(new DecompressionStream("gzip"))
+    ).arrayBuffer()
+  );
+}
+
 export const defaultDecompress: Decompress = function (compression, data) {
-  switch (compression) {
-    case Compression.OFF:
-      return data;
-    case Compression.GZ:
-      return gunzip(data);
-    default:
-      throw new Error(`Unsupported compression ${compression}`);
-  }
+  if (compression === Compression.GZ) return dGZ(data);
+  return agnosticDecompress(compression, data);
 };
 
 export function decode<T>(

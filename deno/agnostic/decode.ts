@@ -31,7 +31,7 @@ async function jsonBinMode(
     chunks.push(input.slice(offset, offset + length));
     offset += length;
   }
-  const bin = new Map<String, ArrayBuffer>();
+  const bin = new Map<string, ArrayBuffer>();
   for (let i = 1; i < chunks.length; i++) {
     bin.set(uuid + ":" + (i - 1).toString(16), chunks[i]);
   }
@@ -42,16 +42,9 @@ async function jsonBinMode(
   });
 }
 
-export const defaultDecompress: Decompress = async function (
-  compression,
-  data
-) {
-  switch (compression) {
-    case Compression.OFF:
-      return data;
-    default:
-      throw new Error(`Unsupported compression ${compression}`);
-  }
+export const defaultDecompress: Decompress = function (compression, data) {
+  if (compression === Compression.OFF) return data;
+  throw new Error(`Unsupported compression ${compression}`);
 };
 
 export async function decode<T>(

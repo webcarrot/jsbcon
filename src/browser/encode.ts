@@ -6,18 +6,29 @@ import {
   Compress,
   Compression,
   Data,
-} from "./agnostic/mod.ts";
+} from "../agnostic/mod";
 
-const compressGZ: Compress = async function (data: Uint8Array) {
-  if (data.byteLength < 64) return [Compression.OFF, data];
-  const compressedStream = new Blob([data])
-    .stream()
-    .pipeThrough(new CompressionStream("gzip"));
-  return [
-    Compression.GZ,
-    new Uint8Array(await new Response(compressedStream).arrayBuffer()),
-  ];
-};
+declare class CompressionStream {
+  constructor(format: "gzip" | "deflate" | "deflate-raw");
+  readonly readable: ReadableStream<Uint8Array>;
+  readonly writable: WritableStream<Uint8Array>;
+}
+
+let compressGZ: Compress | undefined;
+
+if (typeof CompressionStream !== "undefined") {
+  compressGZ = async function (data: Uint8Array) {
+    if (data.byteLength < 64) return [Compression.OFF, data];
+    return [
+      Compression.GZ,
+      new Uint8Array(
+        await new Response(
+          new Blob([data]).stream().pipeThrough(new CompressionStream("gzip"))
+        ).arrayBuffer()
+      ),
+    ];
+  };
+}
 
 function getCompress(
   compression: Compression | undefined

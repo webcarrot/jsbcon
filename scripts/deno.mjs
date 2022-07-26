@@ -32,8 +32,8 @@ async function copy(source, destination) {
         content = content
           .toString("utf-8")
           .replace(/from "(\.[^"]+)";/g, (_, path) => `from "${path}.ts";`);
+        await writeFile(destination, content);
       }
-      await writeFile(destination, content);
       break;
     }
   }
