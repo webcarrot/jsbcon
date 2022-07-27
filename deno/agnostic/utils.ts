@@ -1,3 +1,4 @@
+// Copy of "src/agnostic/utils.ts"
 export function getUUIDStr(u8: Uint8Array): string {
   const u32 = new Uint32Array(u8.buffer, u8.byteOffset, u8.byteLength / 4);
   const str = new Array(2);

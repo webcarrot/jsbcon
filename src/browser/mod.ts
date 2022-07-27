@@ -10,7 +10,6 @@ export type {
   Compress,
   Decompress,
   DefaultBufferTypes,
-  IsBuffer,
   ToUint8Array,
   Data,
 } from "../agnostic/mod";

@@ -5,13 +5,13 @@ import {
   encode as agnosticEncode,
   defaultIsBuffer as agnosticIsBuffer,
   defaultToUint8Array as agnosticToToUint8Array,
-  IsBuffer,
   ToUint8Array,
   DefaultBufferTypes as AgnosticBufferTypes,
   Compress,
   Compression,
   Data,
 } from "../agnostic/mod";
+import { bufferToUint8Array } from "./utils";
 
 const cGZ = promisify(gzip);
 const cBR = promisify(brotliCompress);
@@ -20,7 +20,7 @@ const compressGZ: Compress = async function (data) {
   if (data.byteLength < 64) return [Compression.OFF, data];
   return [
     Compression.GZ,
-    defaultToUint8Array(
+    await defaultToUint8Array(
       await cGZ(data, {
         level: zlibConstants.Z_BEST_SPEED,
       })
@@ -32,7 +32,7 @@ const compressBR: Compress = async function (data) {
   if (data.byteLength < 64) return [Compression.OFF, data];
   return [
     Compression.BR,
-    defaultToUint8Array(
+    await defaultToUint8Array(
       await cBR(data, {
         params: {
           [zlibConstants.BROTLI_PARAM_MODE]: zlibConstants.BROTLI_MODE_TEXT,
@@ -60,28 +60,40 @@ function getCompress(
 
 export type DefaultBufferTypes = AgnosticBufferTypes | Buffer;
 
-export const defaultIsBuffer: IsBuffer<DefaultBufferTypes> = <D extends Data>(
+export function defaultIsBuffer<D extends Data>(
   data: D
-) =>
-  (data instanceof Buffer ||
+): D extends DefaultBufferTypes ? true : false {
+  return (data instanceof Buffer ||
     agnosticIsBuffer(data)) as D extends DefaultBufferTypes ? true : false;
+}
 
 export const defaultToUint8Array: ToUint8Array<DefaultBufferTypes> = function (
   data
 ) {
-  if (data instanceof Buffer)
-    return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  if (data instanceof Buffer) return bufferToUint8Array(data);
   return agnosticToToUint8Array(data);
 };
 
-export async function encode<B extends DefaultBufferTypes>(
+async function encode<B>(
   data: Data,
-  compression?: Compression | Compress,
-  isBuffer: IsBuffer<B> = defaultIsBuffer as unknown as IsBuffer<B>,
-  toUint8Array: ToUint8Array<B> = defaultToUint8Array as unknown as ToUint8Array<B>
-) {
+  compression?: Compression | Compress
+): Promise<Uint8Array>;
+async function encode<B>(
+  data: Data,
+  compression: Compression | Compress | undefined,
+  isBuffer: <D extends Data>(data: D) => D extends B ? true : false,
+  toUint8Array: ToUint8Array<B>
+): Promise<Uint8Array>;
+async function encode(
+  data: Data,
+  compression?: Compression | Compress | undefined,
+  isBuffer?: any,
+  toUint8Array?: any
+): Promise<Uint8Array> {
   let compress: Compress | undefined;
   if (compression instanceof Function) compress = compression;
   else compress = getCompress(compression);
-  return agnosticEncode<B>(data, compress, isBuffer, toUint8Array, randomUUID);
+  return agnosticEncode(data, randomUUID, compress, isBuffer, toUint8Array);
 }
+
+export { encode };

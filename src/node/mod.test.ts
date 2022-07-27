@@ -35,7 +35,7 @@ const lLZ4Compress: Compress = async function (data) {
   if (data.byteLength < 64) return [Compression.OFF, data];
   return [
     Compression.LZ4,
-    defaultToUint8Array(
+    await defaultToUint8Array(
       await cLZ4(Buffer.from(data, data.byteOffset, data.byteLength))
     ),
   ];
@@ -45,7 +45,7 @@ const compressSNAPPY: Compress = async function (data) {
   if (data.byteLength < 64) return [Compression.OFF, data];
   return [
     Compression.SNAPPY,
-    defaultToUint8Array(
+    await defaultToUint8Array(
       await cSNAPPY(Buffer.from(data, data.byteOffset, data.byteLength))
     ),
   ];

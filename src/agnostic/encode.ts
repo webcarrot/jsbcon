@@ -6,13 +6,7 @@ type UUID = {
   readonly arr: Uint8Array;
 };
 
-export type IsBuffer<B extends DefaultBufferTypes> = <D extends Data>(
-  data: D
-) => D extends B ? true : false;
-
-export type ToUint8Array<B extends DefaultBufferTypes> = (
-  data: B
-) => Uint8Array;
+export type ToUint8Array<B> = (data: B) => Promise<Uint8Array> | Uint8Array;
 
 export type Compress = (
   data: Uint8Array
@@ -24,6 +18,10 @@ export type DefaultBufferTypes =
   | Uint16Array
   | Uint32Array;
 
+type IdProvider = {
+  toJSON(): string;
+};
+
 function randomUUID(makeUUID: () => string): UUID {
   const uuid = makeUUID().replaceAll("-", "");
   const u8 = new Uint8Array(16);
@@ -32,13 +30,14 @@ function randomUUID(makeUUID: () => string): UUID {
   return { str: getUUIDStr(u8), arr: u8 };
 }
 
-export const defaultIsBuffer: IsBuffer<DefaultBufferTypes> = <D extends Data>(
+export function defaultIsBuffer<D extends Data>(
   data: D
-) =>
-  (data instanceof Uint8Array ||
+): D extends DefaultBufferTypes ? true : false {
+  return (data instanceof Uint8Array ||
     data instanceof Uint16Array ||
     data instanceof Uint32Array ||
     data instanceof ArrayBuffer) as D extends DefaultBufferTypes ? true : false;
+}
 
 export const defaultToUint8Array: ToUint8Array<DefaultBufferTypes> = (data) => {
   if (data instanceof Uint8Array) return data;
@@ -73,25 +72,31 @@ function uint8ArraysEqual(a: Uint8Array, b: Uint8Array): boolean {
   return true;
 }
 
-function reduce(data: Data, append: (data: Data) => string | false): Data {
+function reduce(data: Data, append: (data: Data) => IdProvider | false): Data {
   if (!data || typeof data !== "object") return data;
   const attachment = append(data);
   if (attachment) return attachment;
-  if (data instanceof Array)
-    return data.map<Data>((data) => reduce(data, append));
+  if (data instanceof Array) {
+    const out: Data[] = [];
+    for (let i = 0; i < data.length; i++) out[i] = reduce(data[i], append);
+    return out;
+  }
   if ("toJSON" in data && data.toJSON instanceof Function) {
     const json = data.toJSON();
     if (json !== data) return reduce(json, append);
   }
   const keys = Object.keys(data);
-  if (keys.length)
-    return keys.reduce<{ [key in string]: Data }>(function (out, key) {
+  if (keys.length) {
+    let out: Record<string, Data> = {};
+    for (let k = 0; k < keys.length; k++) {
+      const key = keys[k];
       out[key] = reduce(
         (data as { readonly [key in string]: Data })[key],
         append
       );
-      return out;
-    }, {});
+    }
+    return out;
+  }
   return data;
 }
 
@@ -138,31 +143,58 @@ function jsonBinMode(
   return output;
 }
 
-export async function encode<B extends DefaultBufferTypes>(
+async function encode<B>(
   data: Data,
+  makeUUID: () => string,
+  compress?: Compress | undefined
+): Promise<Uint8Array>;
+async function encode<B>(
+  data: Data,
+  makeUUID: () => string,
   compress: Compress | undefined,
-  isBuffer: IsBuffer<B> = defaultIsBuffer as unknown as IsBuffer<B>,
-  toUint8Array: ToUint8Array<B> = defaultToUint8Array as ToUint8Array<B>,
-  makeUUID: () => string
+  isBuffer: <D extends Data>(data: D) => D extends B ? true : false,
+  toUint8Array: ToUint8Array<B>
+): Promise<Uint8Array>;
+async function encode(
+  data: Data,
+  makeUUID: () => string,
+  compress?: Compress | undefined,
+  isBuffer?: any,
+  toUint8Array?: any
 ): Promise<Uint8Array> {
+  isBuffer = (isBuffer ?? defaultIsBuffer) as <D extends Data>(
+    data: D
+  ) => D extends DefaultBufferTypes ? true : false;
+  toUint8Array = (toUint8Array ?? defaultToUint8Array) as (
+    data: DefaultBufferTypes
+  ) => Uint8Array | Promise<Uint8Array>;
   if (data === null || data === undefined) return nullMode();
-  if (isBuffer(data)) return binMode(toUint8Array(data as B));
+  if (isBuffer(data as any)) return binMode(await toUint8Array(data as any));
   //#region get binary from data
   const uuid: UUID = randomUUID(makeUUID);
-  const bin: Array<Uint8Array> = [];
-  function append(value: Data): string | false {
+  const attachments = new Map<DefaultBufferTypes, string>();
+  function append(value: Data): IdProvider | false {
     if (!isBuffer(value)) return false;
-    const attachment = toUint8Array(value as B);
-    let index = bin.findIndex(function (b) {
-      return uint8ArraysEqual(attachment, b);
-    });
-    if (index === -1) index = bin.push(attachment) - 1;
-    return uuid.str + ":" + index.toString(16);
+    const v = value as DefaultBufferTypes;
+    attachments.set(v, "");
+    return {
+      toJSON() {
+        return attachments.get(v) as string;
+      },
+    };
   }
   let compression = Compression.OFF;
-  let jsonBuffer = new TextEncoder().encode(
-    JSON.stringify(reduce(data, append))
-  );
+  const json = reduce(data, append);
+  const bin: Array<Uint8Array> = [];
+  for (let [attachment] of attachments) {
+    const u8 = await toUint8Array(attachment);
+    let index = bin.findIndex(function (existing) {
+      return uint8ArraysEqual(u8, existing);
+    });
+    if (index === -1) index = bin.push(u8) - 1;
+    attachments.set(attachment, uuid.str + ":" + index.toString(16));
+  }
+  let jsonBuffer = new TextEncoder().encode(JSON.stringify(json));
   if (compress) {
     const [comp, buff] = await compress(jsonBuffer);
     compression = comp;
@@ -173,3 +205,5 @@ export async function encode<B extends DefaultBufferTypes>(
   bin.unshift(jsonBuffer);
   return jsonBinMode(compression, uuid.arr, bin);
 }
+
+export { encode };

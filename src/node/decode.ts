@@ -29,5 +29,5 @@ export async function decode<T>(
   data: DefaultBufferTypes,
   decompress: Decompress = defaultDecompress
 ) {
-  return agnosticDecode<T>(defaultToUint8Array(data), decompress);
+  return agnosticDecode<T>(await defaultToUint8Array(data), decompress);
 }

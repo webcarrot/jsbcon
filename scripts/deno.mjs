@@ -10,37 +10,35 @@ import {
 } from "node:fs/promises";
 
 async function copy(source, destination) {
-  const sourceInfo = await stat(source);
+  const sourcePath = join(cwd(), source);
+  const destinationPath = join(cwd(), destination);
+  const sourceInfo = await stat(sourcePath);
   switch (true) {
     case sourceInfo.isDirectory(): {
       if (
-        await stat(destination).then(
+        await stat(destinationPath).then(
           () => true,
           () => false
         )
       )
-        await rm(destination, { recursive: true });
-      await mkdir(destination);
-      const content = await readdir(source);
-      await writeFile(
-        join(destination, "README.md"),
-        "Copy of `src/agnostic/**/*.ts` for deno by node `scripts/deno.mjs`"
-      );
+        await rm(destinationPath, { recursive: true });
+      await mkdir(destinationPath);
+      const content = await readdir(sourcePath);
       for (let path of content)
         await copy(join(source, path), join(destination, path));
       break;
     }
     case sourceInfo.isFile(): {
-      let content = await readFile(source);
-      if (extname(source) === ".ts") {
+      let content = await readFile(sourcePath);
+      if (extname(sourcePath) === ".ts") {
         content = content
           .toString("utf-8")
           .replace(/from "(\.[^"]+)";/g, (_, path) => `from "${path}.ts";`);
-        await writeFile(destination, content);
+        await writeFile(destinationPath, `// Copy of "${source}"\n${content}`);
       }
       break;
     }
   }
 }
 
-await copy(join(cwd(), "src/agnostic"), join(cwd(), "deno/agnostic"));
+await copy("src/agnostic", "deno/agnostic");

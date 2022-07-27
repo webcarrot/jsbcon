@@ -1,3 +1,4 @@
+// Copy of "src/agnostic/const.ts"
 export const enum Mode {
   NULL = 1,
   BIN = 2,

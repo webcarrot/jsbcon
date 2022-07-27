@@ -11,7 +11,6 @@ export type {
   Compress,
   Decompress,
   DefaultBufferTypes as AgnosticBufferTypes,
-  IsBuffer,
   ToUint8Array,
   Data,
 } from "../agnostic/mod";

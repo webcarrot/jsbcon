@@ -14,7 +14,6 @@ export type {
   Compress,
   Decompress,
   DefaultBufferTypes,
-  IsBuffer,
   ToUint8Array,
   Data,
 } from "./deno/mod.ts";

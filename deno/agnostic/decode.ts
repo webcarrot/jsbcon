@@ -1,3 +1,4 @@
+// Copy of "src/agnostic/decode.ts"
 import { Compression, Mode } from "./const.ts";
 import { getUUIDStr } from "./utils.ts";
 
